@@ -44,6 +44,13 @@ docker ... TEST
 Contributions, issues and feature requests are welcome!<br />Feel free to check [issues page](https://github.com/Riduidel/livetv-scraper/issues). 
 This repositry tries to make best use of [Gitmoji](https://gitmoji.carloscuesta.me/).
 
+### Installing
+
+1. Install Python and PIP
+2. Run `pip install -r requirements.txt`
+
+Everything is ready and you can now develop!
+
 ## Show your support
 
 Give a ⭐️ if this project helped you!
