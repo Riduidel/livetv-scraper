@@ -26,21 +26,22 @@ class LiveTvRUSpider(scrapy.Spider):
         # Let's find the diffusions link and click on it
         # Diffusions can be found with response.xpath("//a[@class='menu' and contains(@href, 'allupcoming')]").getall()
         allupcoming_element = response.xpath(
-            "//a[@class='menu' and contains(@href, 'allupcoming')]").get()
+            "//a[@class='menu' and contains(@href, 'allupcoming')]")
+        allupcoming_text = allupcoming_element.get()
         logger.info("Found all upcoming events to be %s" %
-                    (allupcoming_element))
-        if allupcoming_element is not None:
-            allupcoming_href = response.urljoin(Selector(
-                text=allupcoming_element).css('a::attr(href)').get())
+                    (allupcoming_text))
+        if allupcoming_text is not None:
+            allupcoming_href = response.urljoin(allupcoming_element.css('a::attr(href)').get())
             logger.info("We will follow link %s" % (allupcoming_href))
             yield Request(allupcoming_href, callback=self.parse_all_upcoming)
 
     def parse_all_upcoming(self, response):
-        allsports = response.css("a[class='main']").getall()
-        for index, sport in enumerate(allsports):
+        allsports = response.css("a[class='main']")
+        for index, sport_selector in enumerate(allsports):
+            sport = sport_selector.get()
             if self.PARAM_SPORT in sport:
                 logger.info("Sport element is %s" % (sport))
-                url = Selector(text=sport).css("a::attr(href)").get()
+                url = sport_selector.css("a::attr(href)").get()
                 url = response.urljoin(url)
                 yield Request(url, callback=self.parse_all_upcoming_events_of_sport)
 
@@ -50,8 +51,7 @@ class LiveTvRUSpider(scrapy.Spider):
     def parse_all_upcoming_events_of_sport(self, response):
         # We use the getall()[1] since the header is in a table itself in a table.
         # As we want the second, we haev to use that syntax
-        page_title = response.xpath(
-            "//span[@class='sltitle' and text()='%s']" % (self.PARAM_SPORT))
+        page_title = response.xpath("//span[@class='sltitle' and text()='%s']" % (self.PARAM_SPORT))
         logger.info("Page title container is %s" % (page_title.get()))
         page_title_table = page_title.xpath("../../..")
         page_title_table_tag = page_title_table.xpath("name()").get()
