@@ -1,6 +1,7 @@
 import locale
 import dateparser
 import scrapy
+from scrapy import Request,Selector
 import logging
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class LiveTvRUSpider(scrapy.Spider):
             'http://livetv.ru/?lng=%s' % (self.PARAM_LANG),
         ]
         for url in urls:
-            yield scrapy.Request(url, callback=self.parse)
+            yield Request(url, callback=self.parse)
 
     def parse(self, response):
         # So we have the LiveTV page!
@@ -29,19 +30,19 @@ class LiveTvRUSpider(scrapy.Spider):
         logger.info("Found all upcoming events to be %s" %
                     (allupcoming_element))
         if allupcoming_element is not None:
-            allupcoming_href = response.urljoin(scrapy.Selector(
+            allupcoming_href = response.urljoin(Selector(
                 text=allupcoming_element).css('a::attr(href)').get())
-#            logger.info("We will follow link %s" % (allupcoming_href))
-            yield scrapy.Request(allupcoming_href, callback=self.parse_all_upcoming)
+            logger.info("We will follow link %s" % (allupcoming_href))
+            yield Request(allupcoming_href, callback=self.parse_all_upcoming)
 
     def parse_all_upcoming(self, response):
         allsports = response.css("a[class='main']").getall()
         for index, sport in enumerate(allsports):
             if self.PARAM_SPORT in sport:
                 logger.info("Sport element is %s" % (sport))
-                url = scrapy.Selector(text=sport).css("a::attr(href)").get()
+                url = Selector(text=sport).css("a::attr(href)").get()
                 url = response.urljoin(url)
-                yield scrapy.Request(url, callback=self.parse_all_upcoming_events_of_sport)
+                yield Request(url, callback=self.parse_all_upcoming_events_of_sport)
 
     def to_local_date(self, text):
         return dateparser.parse(text, settings={'TIMEZONE': self.PARAM_TIMEZONE})
@@ -76,7 +77,7 @@ class LiveTvRUSpider(scrapy.Spider):
                 'category': live.xpath("./span[@class='evdesc']/text()[2]").get().strip()
             }
             logger.info("Details of %s" % (live_details))
-            yield scrapy.Request(url, callback=self.parse_all_streams_of_event)
+#            yield Request(url, callback=self.parse_all_streams_of_event)
 
     def parse_all_streams_of_event(self, response):
         pass
