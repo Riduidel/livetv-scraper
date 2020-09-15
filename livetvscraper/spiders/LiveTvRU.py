@@ -4,8 +4,6 @@ import locale
 import dateparser
 import scrapy
 from scrapy import Request, Selector
-import logging
-logger = logging.getLogger(__name__)
 
 
 class LiveTvRUSpider(scrapy.Spider):
@@ -13,6 +11,10 @@ class LiveTvRUSpider(scrapy.Spider):
     PARAM_LANG = 'fr_FR'
     PARAM_SPORT = 'Rugby à XV'
     PARAM_TIMEZONE = 'Europe/Paris'
+    PARAM_BROWSER_LINKS = {
+        'fr_FR': 'Liens pour le navigateur'
+    }
+
     name = 'livetv'
 
     def start_requests(self):
@@ -30,10 +32,10 @@ class LiveTvRUSpider(scrapy.Spider):
 
         allupcoming_element = response.xpath("//a[@class='menu' and contains(@href, 'allupcoming')]")
         allupcoming_text = allupcoming_element.get()
-        logger.info('Found all upcoming events to be %s' % allupcoming_text)
+        self.logger.info('Found all upcoming events to be %s' % allupcoming_text)
         if allupcoming_text is not None:
             allupcoming_href = response.urljoin(allupcoming_element.css('a::attr(href)').get())
-            logger.info('We will follow link %s' % allupcoming_href)
+            self.logger.info('We will follow link %s' % allupcoming_href)
             yield Request(allupcoming_href, callback=self.parse_all_upcoming)
 
     def parse_all_upcoming(self, response):
@@ -41,7 +43,7 @@ class LiveTvRUSpider(scrapy.Spider):
         for (index, sport_selector) in enumerate(allsports):
             sport = sport_selector.get()
             if self.PARAM_SPORT in sport:
-                logger.info('Sport element is %s' % sport)
+                self.logger.info('Sport element is %s' % sport)
                 url = sport_selector.css('a::attr(href)').get()
                 url = response.urljoin(url)
                 yield Request(url, callback=self.parse_all_upcoming_events_of_sport)
@@ -53,7 +55,7 @@ class LiveTvRUSpider(scrapy.Spider):
         # We use the getall()[1] since the header is in a table itself in a table.
         # As we want the second, we haev to use that syntax
         page_title = response.xpath("//span[@class='sltitle' and text()='%s']" % self.PARAM_SPORT)
-        logger.info('Page title container is %s' % page_title.get())
+        self.logger.info('Page title container is %s' % page_title.get())
         page_title_table = page_title.xpath('../../..')
         page_title_table_tag = page_title_table.xpath('name()').get()
         assert page_title_table_tag == 'table', \
@@ -81,8 +83,17 @@ class LiveTvRUSpider(scrapy.Spider):
                 'category': live.xpath("./span[@class='evdesc']/text()[2]"
                         ).get().strip(),
                 }
-            logger.info('Details of %s' % live_details)
-            yield Request(url, callback=self.parse_all_streams_of_event)
+            yield Request(url, callback=self.parse_all_streams_of_event, cb_kwargs=live_details)
 
-    def parse_all_streams_of_event(self, response):
-        logger.info("We should get streams of %s" % response)
+    def parse_all_streams_of_event(self, response, url, text, live, date, category):
+        if live:
+            browser_link = response.xpath("//span[text()='%s']"%self.PARAM_BROWSER_LINKS[self.PARAM_LANG])
+            browser_link_table = browser_link.xpath('../../..')
+            stream_table = browser_link_table.xpath('../table[2]')
+            stream_link_descriptors = stream_table.xpath(".//table[@class='lnktbj']")
+            for descriptor in stream_link_descriptors:
+                quality = descriptor.xpath(".//td[@class='rate']/div/text()").get()
+                link = descriptor.xpath(".//a/@href").get()
+                if link.startswith('//'):
+                    link = 'http:'+link
+                self.logger.info("%s is live NOW! Available at %s (quality %s percents)"%(text, link, quality))
