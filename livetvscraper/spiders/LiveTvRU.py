@@ -8,21 +8,23 @@ from scrapy import Request, Selector
 
 class LiveTvRUSpider(scrapy.Spider):
 
-    PARAM_LANG = 'fr_FR'
-    PARAM_SPORT = 'Rugby à XV'
-    PARAM_TIMEZONE = 'Europe/Paris'
     PARAM_BROWSER_LINKS = {
         'fr_FR': 'Liens pour le navigateur'
     }
 
     name = 'livetv'
 
-    def start_requests(self):
-        locale.setlocale(locale.LC_ALL, self.PARAM_LANG)
-        # TODO adapt language tu user language (see how to use Scrapy settings object)
-        urls = ['http://livetv.ru/?lng=%s' % self.PARAM_LANG]
-        for url in urls:
-            yield Request(url, callback=self.parse)
+    def __init__(self, 
+        lang='fr_FR',
+        sport = 'Rugby à XV',
+        timezone = 'Europe/Paris', 
+        *args, **kwargs):
+        super(LiveTvRUSpider, self).__init__(*args, **kwargs)
+        self.PARAM_LANG = lang
+        locale.setlocale(locale.LC_ALL, lang)
+        self.PARAM_SPORT = sport
+        self.PARAM_TIMEZONE = timezone
+        self.start_urls = ['http://livetv.ru/?lng=%s' % self.PARAM_LANG]
 
     def parse(self, response):
 
